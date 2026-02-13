@@ -1,4 +1,13 @@
-# Prerequisites
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Python-related
+__pycache__/
+*.pyc
+
+# Prerequisites (来自你的原文件)
 *.d
 
 # Compiled Object files
@@ -39,3 +48,10 @@
 
 # debug information files
 *.dwo
+
+# IDE / editor files (可选)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
