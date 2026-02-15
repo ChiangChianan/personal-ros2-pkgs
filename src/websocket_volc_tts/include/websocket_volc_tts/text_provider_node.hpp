@@ -10,6 +10,7 @@ class TextProvider : public rclcpp::Node {
   explicit TextProvider(std::string node_name);
 
  private:
+  void CheckSubscriberAndPublish();
   // 发布下一行文本（如果文件未结束）
   void PublishNextLine();
   // 反馈订阅回调：收到反馈后发布下一行
@@ -23,7 +24,7 @@ class TextProvider : public rclcpp::Node {
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr text_publisher_;
   // 订阅者：TTS 完成反馈
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr feedback_subscription_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr check_subscriber_timer_;
 
   std::string file_path_;
   std::ifstream file_;

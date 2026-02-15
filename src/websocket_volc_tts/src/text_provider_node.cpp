@@ -28,18 +28,24 @@ TextProvider::TextProvider(std::string node_name)
     return;
   }
 
-  // 延迟启动：等待订阅者就绪后再发布第一行
-  auto timer = this->create_wall_timer(1s, [this]() {
-    timer_->cancel();  // 只执行一次
-    if (this->text_publisher_->get_subscription_count() == 0) {
-      RCLCPP_WARN(this->get_logger(),
-                  "No subscriber for 'text_to_speak' yet, waiting...");
-      // 可以继续等待或直接发布（消息仍可能丢失，但至少给订阅者时间注册）
-    }
-    // 发布第一行文本，启动流程
+  // 不再直接发布第一行，改为启动轮询定时器
+  check_subscriber_timer_ = this->create_wall_timer(
+      1s,  // 每 1s 检查一次
+      std::bind(&TextProvider::CheckSubscriberAndPublish, this));
+}
+
+void TextProvider::CheckSubscriberAndPublish() {
+  // 检查是否有订阅者
+  if (this->text_publisher_->get_subscription_count() > 0) {
+    RCLCPP_INFO(this->get_logger(),
+                "Subscriber detected, publishing first line.");
+    // 停止定时器
+    check_subscriber_timer_->cancel();
+    // 发布第一行
     PublishNextLine();
-  });
-  timer_ = timer;  // 保存定时器，防止析构
+  } else {
+    RCLCPP_INFO(this->get_logger(), "No subscriber yet, waiting...");
+  }
 }
 
 bool TextProvider::OpenFile() {

@@ -253,70 +253,71 @@ bool VolcTTSNode::parse_message(const std::vector<uint8_t>& data, MsgType& type,
                                 std::string& session_id,
                                 std::vector<uint8_t>& payload,
                                 int32_t& error_code) {
-    if (data.size() < 4) return false;
+  if (data.size() < 4) return false;
 
-    size_t pos = 0;
-    uint8_t byte0 = data[pos++];
-    uint8_t byte1 = data[pos++];
-    uint8_t byte2 = data[pos++];
-    uint8_t byte3 = data[pos++];  // reserved
+  size_t pos = 0;
+  uint8_t byte0 = data[pos++];
+  uint8_t byte1 = data[pos++];
+  uint8_t byte2 = data[pos++];
+  uint8_t byte3 = data[pos++];  // reserved
 
-    uint8_t version = byte0 >> 4;
-    uint8_t header_size = byte0 & 0x0F;
-    type = static_cast<MsgType>(byte1 >> 4);
-    flag = static_cast<MsgFlag>(byte1 & 0x0F);
-    // Serialization ser = static_cast<Serialization>(byte2 >> 4);
-    // Compression comp = static_cast<Compression>(byte2 & 0x0F);
+  uint8_t version = byte0 >> 4;
+  uint8_t header_size = byte0 & 0x0F;
+  type = static_cast<MsgType>(byte1 >> 4);
+  flag = static_cast<MsgFlag>(byte1 & 0x0F);
+  // Serialization ser = static_cast<Serialization>(byte2 >> 4);
+  // Compression comp = static_cast<Compression>(byte2 & 0x0F);
 
-    // 解析可选字段
-    if (type == MsgType::Error) {
-        if (data.size() - pos < 4) return false;
-        error_code = read_int32_be(&data[pos]);
-        pos += 4;
-    } else {
-        if (flag == MsgFlag::WithEvent) {
-            if (data.size() - pos < 4) return false;
-            event = static_cast<EventType>(read_int32_be(&data[pos]));
-            pos += 4;
-
-            // 根据事件类型决定读取 session_id 还是 connect_id
-            if (event == EventType::ConnectionStarted ||
-                event == EventType::ConnectionFailed ||
-                event == EventType::ConnectionFinished) {
-                // 读取 connect_id（只需移动指针，无需保存）
-                if (data.size() - pos < 4) return false;
-                uint32_t id_len = read_uint32_be(&data[pos]);
-                pos += 4;
-                if (id_len > 0) {
-                    if (data.size() - pos < id_len) return false;
-                    pos += id_len;  // 跳过 connect_id 内容
-                }
-            } else {
-                // 读取 session_id
-                if (data.size() - pos < 4) return false;
-                uint32_t session_len = read_uint32_be(&data[pos]);
-                pos += 4;
-                if (session_len > 0) {
-                    if (data.size() - pos < session_len) return false;
-                    session_id.assign(reinterpret_cast<const char*>(&data[pos]), session_len);
-                    pos += session_len;
-                }
-            }
-        }
-        // 如果有 sequence 字段，这里需要处理（本示例未使用，忽略）
-    }
-
-    // 读取 payload
+  // 解析可选字段
+  if (type == MsgType::Error) {
     if (data.size() - pos < 4) return false;
-    uint32_t payload_len = read_uint32_be(&data[pos]);
+    error_code = read_int32_be(&data[pos]);
     pos += 4;
-    if (payload_len > 0) {
-        if (data.size() - pos < payload_len) return false;
-        payload.assign(data.begin() + pos, data.begin() + pos + payload_len);
-        pos += payload_len;
-    }
+  } else {
+    if (flag == MsgFlag::WithEvent) {
+      if (data.size() - pos < 4) return false;
+      event = static_cast<EventType>(read_int32_be(&data[pos]));
+      pos += 4;
 
-    return pos == data.size();
+      // 根据事件类型决定读取 session_id 还是 connect_id
+      if (event == EventType::ConnectionStarted ||
+          event == EventType::ConnectionFailed ||
+          event == EventType::ConnectionFinished) {
+        // 读取 connect_id（只需移动指针，无需保存）
+        if (data.size() - pos < 4) return false;
+        uint32_t id_len = read_uint32_be(&data[pos]);
+        pos += 4;
+        if (id_len > 0) {
+          if (data.size() - pos < id_len) return false;
+          pos += id_len;  // 跳过 connect_id 内容
+        }
+      } else {
+        // 读取 session_id
+        if (data.size() - pos < 4) return false;
+        uint32_t session_len = read_uint32_be(&data[pos]);
+        pos += 4;
+        if (session_len > 0) {
+          if (data.size() - pos < session_len) return false;
+          session_id.assign(reinterpret_cast<const char*>(&data[pos]),
+                            session_len);
+          pos += session_len;
+        }
+      }
+    }
+    // 如果有 sequence 字段，这里需要处理（本示例未使用，忽略）
+  }
+
+  // 读取 payload
+  if (data.size() - pos < 4) return false;
+  uint32_t payload_len = read_uint32_be(&data[pos]);
+  pos += 4;
+  if (payload_len > 0) {
+    if (data.size() - pos < payload_len) return false;
+    payload.assign(data.begin() + pos, data.begin() + pos + payload_len);
+    pos += payload_len;
+  }
+
+  return pos == data.size();
 }
 
 bool VolcTTSNode::send_message(const std::vector<uint8_t>& msg) {
