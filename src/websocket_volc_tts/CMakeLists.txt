@@ -18,6 +18,7 @@ add_executable(text_provider_node src/text_provider_node.cpp)
 add_executable(websocket_client_node src/websocket_client_node.cpp)
 
 target_include_directories(text_provider_node PRIVATE  include)
+target_include_directories(websocket_client_node PRIVATE  include)
 
 ament_target_dependencies(text_provider_node
   rclcpp

@@ -1,3 +1,5 @@
+#ifndef TEXT_PROVIDER_NODE_H
+#define TEXT_PROVIDER_NODE_H
 #include <fstream>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/empty.hpp>
@@ -19,9 +21,9 @@ class TextProvider : public rclcpp::Node {
 
   // 发布者：文本消息
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr text_publisher_;
-
   // 订阅者：TTS 完成反馈
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr feedback_subscription_;
+  rclcpp::TimerBase::SharedPtr timer_;
 
   std::string file_path_;
   std::ifstream file_;
@@ -29,3 +31,5 @@ class TextProvider : public rclcpp::Node {
   bool is_finished_;
   bool waiting_for_feedback_;
 };
+
+#endif
