@@ -1,1 +1,0 @@
-ros2 pkg create websocket_volc_tts --build-type ament_cmake --dependencies rclcpp libwebsocketpp-dev libssl-dev std_msgs --license Apache-2.0
