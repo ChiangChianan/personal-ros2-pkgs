@@ -228,7 +228,7 @@ void VolcTTSNode::OnOpen(websocketpp::connection_hdl hdl) {
   std::lock_guard<std::mutex> lock(ws_mutex_);
   connection_hdl_ = hdl;
   connected_ = true;
-  RCLCPP_INFO(this->get_logger(), "WebSocket connecte");
+  RCLCPP_INFO(this->get_logger(), "WebSocket connected");
   message_cv_.notify_all();
 }
 
@@ -344,6 +344,14 @@ std::vector<uint8_t> VolcTTSNode::SerializeMessage(
   if (payload_len > 0) {
     buffer.insert(buffer.end(), payload.begin(), payload.end());
   }
+  // TODO : delete the test code
+  // std::string hex_str;
+  // for (uint8_t b : buffer) {
+  //   char buf[3];
+  //   snprintf(buf, sizeof(buf), "%02x", b);
+  //   hex_str += buf;
+  // }
+  // RCLCPP_INFO(this->get_logger(), "buffer hex: %s", hex_str.c_str());
   return buffer;
 }
 
@@ -374,10 +382,14 @@ bool VolcTTSNode::ParseMessage(const std::vector<uint8_t>& data, MsgType& type,
   uint8_t byte0 = data[pos++];
   uint8_t byte1 = data[pos++];
   uint8_t byte2 = data[pos++];
+  (void)byte2;
   uint8_t byte3 = data[pos++];
+  (void)byte3;
 
-  uint8_t version = byte0 >> 4;        // 版本号（当前为1）
+  uint8_t version = byte0 >> 4;  // 版本号（当前为1）
+  (void)version;
   uint8_t header_size = byte0 & 0x0F;  // 头部长度（忽略，假定为1）
+  (void)header_size;
   type = static_cast<MsgType>(byte1 >> 4);
   flag = static_cast<MsgFlag>(byte1 & 0x0F);
   // Serialization ser = static_cast<Serialization>(byte2 >> 4);
@@ -463,6 +475,15 @@ bool VolcTTSNode::SendMessage(const std::vector<uint8_t>& msg) {
     return false;
   }
   websocketpp::lib::error_code ec;
+  // TODO:delete the test code
+  // std::string hex_str;
+  // for (uint8_t b : msg) {
+  //   char buf[3];
+  //   snprintf(buf, sizeof(buf), "%02x", b);
+  //   hex_str += buf;
+  // }
+  // RCLCPP_INFO(this->get_logger(), "msg in SendMessge hex: %s",
+  // hex_str.c_str());
   client_.send(connection_hdl_, msg.data(), msg.size(),
                websocketpp::frame::opcode::binary, ec);
   if (ec) {
@@ -521,7 +542,8 @@ bool VolcTTSNode::WaitForEvent(EventType expected_event,
                                std::vector<uint8_t>& out_payload,
                                std::string& out_session_id, int timeout_ms) {
   auto start_time = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - start_time >
+  // fixbug：循环条件出错，导致直接跳出
+  while (std::chrono::steady_clock::now() - start_time <
          std::chrono::milliseconds(timeout_ms)) {
     std::vector<uint8_t> raw;
     // 调用 receive_message 阻塞 100ms 轮询，避免 CPU 空转
@@ -630,18 +652,20 @@ bool VolcTTSNode::ProcessText(const std::string& text, int index) {
   start_req["req_params"] = {
       {"speaker", voice_type_},
       {"audio_params",
-       {"format", audio_format_},
-       {"sample_rate", sample_rate_},
-       {"enable_timestamp", enable_timestamp_}},               // 音频参数
+       // fixbug json构造出错
+       {{"format", audio_format_},
+        {"sample_rate", sample_rate_},
+        {"enable_timestamp", enable_timestamp_}}},             // 音频参数
       {"additions", "{\"disable_markdown_filter\": false}"}};  // 附加参数
   start_req["event"] = static_cast<int>(EventType::StartSession);  // 事件类型
-
+  RCLCPP_INFO(this->get_logger(), "StartRequest JSON: %s",
+              start_req.dump().c_str());
   std::string start_json = start_req.dump();  // JSON 序列化为字符串
-  std::vector<uint8_t> task_payload(start_json.begin(), start_json.end());
-  auto task_msg =
+  std::vector<uint8_t> start_payload(start_json.begin(), start_json.end());
+  auto start_msg =
       SerializeMessage(MsgType::FullClientRequest, MsgFlag::WithEvent,
-                       EventType::TaskRequest, session_id, task_payload);
-  if (!SendMessage(task_msg)) {
+                       EventType::StartSession, session_id, start_payload);
+  if (!SendMessage(start_msg)) {
     return false;
   }
 
@@ -667,13 +691,14 @@ bool VolcTTSNode::ProcessText(const std::string& text, int index) {
         {"enable_timestamp", enable_timestamp_}}},
       {"additions", "{\"disable_markdown_filter\": false}"}};
   task_req["event"] = static_cast<int>(EventType::TaskRequest);
-
+  RCLCPP_INFO(this->get_logger(), "TaskRequest JSON: %s",
+              task_req.dump().c_str());
   std::string task_json = task_req.dump();
-  std::vector<uint8_t> start_payload(task_json.begin(), task_json.end());
-  auto start_msg =
+  std::vector<uint8_t> task_payload(task_json.begin(), task_json.end());
+  auto task_msg =
       SerializeMessage(MsgType::FullClientRequest, MsgFlag::WithEvent,
-                       EventType::TaskRequest, session_id, start_payload);
-  if (!SendMessage(start_msg)) {
+                       EventType::TaskRequest, session_id, task_payload);
+  if (!SendMessage(task_msg)) {
     return false;
   }
 
@@ -718,6 +743,13 @@ bool VolcTTSNode::ProcessText(const std::string& text, int index) {
       // 会话结束事件
       session_finished = true;
       RCLCPP_INFO(this->get_logger(), "Session finished");
+    }
+    // TODO:新增错误处理分支
+    else if (type == MsgType::Error) {
+      // 错误帧，payload 应为 JSON 字符串
+      std::string error_str(payload.begin(), payload.end());
+      RCLCPP_ERROR(this->get_logger(), "Raw error payload: %s",
+                   error_str.c_str());  // 添加这行
     } else {
       RCLCPP_WARN(this->get_logger(), "Unexpected message: type=%d, event=%d",
                   static_cast<int>(type), static_cast<int>(event));

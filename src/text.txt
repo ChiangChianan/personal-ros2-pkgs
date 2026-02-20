@@ -1,6 +1,0 @@
-ros2 pkg create websocket_volc_tts --build-type ament_cmake --dependencies rclcpp libwebsocketpp-dev libssl-dev std_msgs --license Apache-2.0
-
-
-ros2 run websocket_volc_tts text_provider_node --ros-args -p file_path:=/home/nan/project/ros2practice/chapter_03/novel/novel1.txt
-
-ros2 run websocket_volc_tts websocket_client_node --ros-args -p config_file:=/home/nan/project/ros2practice/personal_ros2_ws/config.json 
