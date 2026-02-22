@@ -9,10 +9,28 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(status_interfaces REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 add_executable(system_status_pub src/system_status_pub.cpp)
 
+# 启用自动 moc
+set(CMAKE_AUTOMOC ON)
+add_executable(system_status_display 
+  src/status_display_main.cpp 
+  src/main_window.cpp
+  include/system_status/main_window.hpp   # 添加头文件以触发 moc
+)
+
+
+target_include_directories(system_status_display PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(system_status_display Qt5::Widgets)
+
 ament_target_dependencies(system_status_pub 
+  rclcpp
+  status_interfaces
+)
+
+ament_target_dependencies(system_status_display 
   rclcpp
   status_interfaces
 )
@@ -29,6 +47,6 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(TARGETS system_status_pub DESTINATION lib/${PROJECT_NAME})
+install(TARGETS system_status_pub system_status_display DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
