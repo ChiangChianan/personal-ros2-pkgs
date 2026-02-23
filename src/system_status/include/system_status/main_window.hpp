@@ -60,6 +60,7 @@ class MainWindow : public QMainWindow {
   MainWindow(QWidget* parent = nullptr);
   ~MainWindow();
 
+ protected:
  public slots:
   void updateUI(const status_interfaces::msg::SystemStatus::SharedPtr msg);
  private slots:
