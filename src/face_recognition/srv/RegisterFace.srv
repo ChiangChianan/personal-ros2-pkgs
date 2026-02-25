@@ -1,0 +1,5 @@
+sensor_msgs/Image image
+string name
+---
+bool success
+string message
