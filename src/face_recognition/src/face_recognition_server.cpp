@@ -60,7 +60,7 @@ void FaceRecognitionServer::LoadFaceDB() {
   }
   size_t count;
   file.read(reinterpret_cast<char*>(&count), sizeof(count));
-  for (size_t i; i < count; i++) {
+  for (size_t i = 0; i < count; i++) {
     size_t name_len;
     file.read(reinterpret_cast<char*>(&name_len), sizeof(name_len));
     std::string name(name_len, '\0');
